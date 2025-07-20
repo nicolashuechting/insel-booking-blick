@@ -1,21 +1,49 @@
-import { Calendar as CalendarIcon, Filter } from "lucide-react";
+import { Calendar as CalendarIcon, Filter, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { properties, mockBookings } from "@/data/mockData";
 
 export default function Calendar() {
-  const currentMonth = new Date().toLocaleDateString('de-DE', { 
-    month: 'long', 
-    year: 'numeric' 
-  });
+  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // Generate 12 days starting from current date
+  const generateDays = () => {
+    const days = [];
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(currentDate);
+      date.setDate(currentDate.getDate() + i);
+      days.push(date);
+    }
+    return days;
+  };
 
-  // Platzhalter für Kalenderdaten
-  const calendarData = [
-    { property: "Juist", bookings: 3, nextBooking: "15.01.2025" },
-    { property: "Norderney", bookings: 2, nextBooking: "20.01.2025" },
-    { property: "Baltrum", bookings: 1, nextBooking: "25.01.2025" },
-    { property: "Anne 1", bookings: 4, nextBooking: "18.01.2025" },
-  ];
+  const days = generateDays();
+  
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() + (direction === 'next' ? 7 : -7));
+    setCurrentDate(newDate);
+  };
+
+  const getBookingsForPropertyAndDate = (propertyId: string, date: Date) => {
+    return mockBookings.filter(booking => {
+      const checkIn = new Date(booking.check_in);
+      const checkOut = new Date(booking.check_out);
+      return booking.property_id === propertyId && 
+             date >= checkIn && 
+             date < checkOut;
+    });
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('de-DE', { 
+      weekday: 'short', 
+      day: '2-digit',
+      month: '2-digit'
+    });
+  };
 
   return (
     <div className="min-h-screen bg-[var(--gradient-subtle)]">
@@ -28,43 +56,105 @@ export default function Calendar() {
               Kalenderübersicht
             </h1>
             <p className="text-muted-foreground">
-              Alle Buchungen im Überblick für {currentMonth}
+              Alle Buchungen im Gantt-Chart Format
             </p>
           </div>
           
-          <Button variant="outline" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Filter
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2">
+              <Filter className="h-4 w-4" />
+              Filter
+            </Button>
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              Neue Buchung
+            </Button>
+          </div>
+        </div>
+
+        {/* Calendar Navigation */}
+        <div className="flex items-center justify-between bg-card/80 backdrop-blur-sm border border-primary/20 rounded-lg p-4">
+          <Button variant="ghost" onClick={() => navigateWeek('prev')}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          <div className="text-lg font-semibold text-foreground">
+            {currentDate.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}
+          </div>
+          
+          <Button variant="ghost" onClick={() => navigateWeek('next')}>
+            <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Kalender Platzhalter */}
-        <Card className="bg-card/80 backdrop-blur-sm border-primary/20">
-          <CardHeader>
-            <CardTitle>Monatsübersicht {currentMonth}</CardTitle>
-            <CardDescription>
-              Detaillierte Kalenderansicht wird in der nächsten Version implementiert
-            </CardDescription>
+        {/* Woodu-Style Calendar Grid */}
+        <Card className="bg-card/80 backdrop-blur-sm border-primary/20 overflow-hidden">
+          <CardHeader className="pb-4">
+            <CardTitle>Buchungskalender</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {calendarData.map((item) => (
-                <Card key={item.property} className="bg-muted/50">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{item.property}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Buchungen:</span>
-                      <Badge variant="secondary">{item.bookings}</Badge>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <div className="min-w-[800px]">
+                {/* Header with dates */}
+                <div className="grid grid-cols-[200px_1fr] border-b border-border">
+                  <div className="p-4 bg-muted/50 font-semibold text-sm">
+                    Wohnung
+                  </div>
+                  <div className="grid grid-cols-12 gap-0">
+                    {days.map((day, index) => (
+                      <div key={index} className="p-2 text-center bg-muted/30 border-l border-border text-xs font-medium">
+                        {formatDate(day)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Property rows */}
+                {properties.map((property) => (
+                  <div key={property.id} className="grid grid-cols-[200px_1fr] border-b border-border hover:bg-muted/20 transition-colors">
+                    <div className="p-4 flex items-center">
+                      <div>
+                        <div className="font-medium text-sm">{property.name}</div>
+                        <div className="text-xs text-muted-foreground">{property.house}</div>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Nächste:</span>
-                      <span className="text-sm font-medium">{item.nextBooking}</span>
+                    
+                    <div className="grid grid-cols-12 gap-0 relative min-h-[60px]">
+                      {days.map((day, dayIndex) => {
+                        const bookings = getBookingsForPropertyAndDate(property.id, day);
+                        const hasBooking = bookings.length > 0;
+                        
+                        return (
+                          <div 
+                            key={dayIndex} 
+                            className="border-l border-border p-1 flex items-center justify-center relative cursor-pointer hover:bg-primary/5 transition-colors"
+                          >
+                            {hasBooking && (
+                              <div className="w-full h-8 bg-primary/20 border border-primary/40 rounded-sm flex items-center justify-center group">
+                                <div className="text-xs text-primary font-medium truncate px-1">
+                                  {bookings[0].guest_name}
+                                </div>
+                                {/* Tooltip on hover */}
+                                <div className="absolute top-full left-0 mt-1 p-2 bg-popover border border-border rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10 text-xs min-w-[150px]">
+                                  <div className="font-medium">{bookings[0].guest_name}</div>
+                                  <div className="text-muted-foreground">
+                                    {new Date(bookings[0].check_in).toLocaleDateString('de-DE')} - {new Date(bookings[0].check_out).toLocaleDateString('de-DE')}
+                                  </div>
+                                  {bookings[0].source && (
+                                    <div className="text-muted-foreground">
+                                      Quelle: {bookings[0].source}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -75,15 +165,15 @@ export default function Calendar() {
             <div className="flex items-start gap-3">
               <CalendarIcon className="h-5 w-5 text-primary mt-0.5" />
               <div>
-                <h3 className="font-semibold text-foreground">Kommende Features</h3>
+                <h3 className="font-semibold text-foreground">Kalender Features</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Die vollständige Kalenderansicht wird folgende Funktionen enthalten:
+                  Nach der Supabase-Integration verfügbar:
                 </p>
                 <ul className="text-sm text-muted-foreground mt-2 space-y-1 list-disc list-inside">
-                  <li>Monatskalender mit allen Wohnungen untereinander</li>
-                  <li>Einzelwohnungsansicht pro Kalender</li>
-                  <li>iCal-Import Integration</li>
-                  <li>Drag & Drop für Buchungen</li>
+                  <li>Buchungen direkt im Kalender erstellen durch Klick auf freie Tage</li>
+                  <li>Buchungen bearbeiten und löschen durch Klick auf Balken</li>
+                  <li>iCal-Import von externen Buchungsplattformen</li>
+                  <li>Echte Datenbankanbindung für persistente Speicherung</li>
                 </ul>
               </div>
             </div>
