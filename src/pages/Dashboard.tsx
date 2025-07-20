@@ -47,7 +47,7 @@ export default function Dashboard() {
   const hausAnneProperties = properties.filter(p => p.house === 'Haus Anne');
 
   return (
-    <div className="min-h-screen bg-[var(--gradient-subtle)]">
+    <div className="bg-[var(--gradient-subtle)] min-h-full">
       <div className="container mx-auto p-6 space-y-8">
         <DashboardHeader 
           bookings={bookings}
