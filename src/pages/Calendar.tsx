@@ -2,11 +2,14 @@ import { Calendar as CalendarIcon, Filter, Plus, ChevronLeft, ChevronRight } fro
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
-import { properties, mockBookings } from "@/data/mockData";
+import { properties } from "@/data/mockData";
+import { useBookings } from "@/hooks/useBookings";
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const { bookings, loading } = useBookings();
   
   // Generate 12 days starting from current date
   const generateDays = () => {
@@ -28,7 +31,7 @@ export default function Calendar() {
   };
 
   const getBookingsForPropertyAndDate = (propertyId: string, date: Date) => {
-    return mockBookings.filter(booking => {
+    return bookings.filter(booking => {
       const checkIn = new Date(booking.check_in);
       const checkOut = new Date(booking.check_out);
       return booking.property_id === propertyId && 
@@ -45,6 +48,25 @@ export default function Calendar() {
     });
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[var(--gradient-subtle)]">
+        <div className="container mx-auto p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-10 w-64" />
+            <Skeleton className="h-10 w-48" />
+          </div>
+          <Skeleton className="h-16 w-full" />
+          <div className="space-y-2">
+            {[...Array(15)].map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[var(--gradient-subtle)]">
       <div className="container mx-auto p-6 space-y-6">
@@ -56,7 +78,7 @@ export default function Calendar() {
               Kalenderübersicht
             </h1>
             <p className="text-muted-foreground">
-              Alle Buchungen im Gantt-Chart Format
+              Alle Buchungen aus Supabase im Gantt-Chart Format
             </p>
           </div>
           
@@ -167,13 +189,13 @@ export default function Calendar() {
               <div>
                 <h3 className="font-semibold text-foreground">Kalender Features</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Nach der Supabase-Integration verfügbar:
+                  ✅ Supabase-Integration aktiv - Daten werden live geladen!
                 </p>
                 <ul className="text-sm text-muted-foreground mt-2 space-y-1 list-disc list-inside">
-                  <li>Buchungen direkt im Kalender erstellen durch Klick auf freie Tage</li>
-                  <li>Buchungen bearbeiten und löschen durch Klick auf Balken</li>
-                  <li>iCal-Import von externen Buchungsplattformen</li>
-                  <li>Echte Datenbankanbindung für persistente Speicherung</li>
+                  <li>Buchungen werden automatisch aus Supabase geladen</li>
+                  <li>Alle Änderungen werden in Echtzeit synchronisiert</li>
+                  <li>Sichere Authentifizierung mit Row Level Security</li>
+                  <li>Vollständige Buchungsverwaltung verfügbar</li>
                 </ul>
               </div>
             </div>

@@ -1,34 +1,19 @@
 import { useState } from 'react';
-import { properties, mockBookings } from '@/data/mockData';
+import { properties } from '@/data/mockData';
 import { BookingFormData } from '@/types';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { HouseSection } from '@/components/HouseSection';
 import { BookingDialog } from '@/components/BookingDialog';
-import { useToast } from '@/hooks/use-toast';
+import { useBookings } from '@/hooks/useBookings';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Dashboard() {
-  const [bookings, setBookings] = useState(mockBookings);
+  const { bookings, loading, addBooking } = useBookings();
   const [showBookingDialog, setShowBookingDialog] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>();
-  const { toast } = useToast();
 
-  const handleAddBooking = (data: BookingFormData) => {
-    const newBooking = {
-      id: Date.now().toString(),
-      ...data,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    
-    setBookings(prev => [...prev, newBooking]);
-    
-    const property = properties.find(p => p.id === data.property_id);
-    const actionType = data.source === 'blocked' ? 'Blockierung' : 'Buchung';
-    
-    toast({
-      title: `${actionType} hinzugefügt`,
-      description: `${actionType} für ${property?.name} wurde erfolgreich erstellt.`,
-    });
+  const handleAddBooking = async (data: BookingFormData) => {
+    await addBooking(data);
   };
 
   const handlePropertyClick = (propertyId: string) => {
@@ -37,14 +22,42 @@ export default function Dashboard() {
   };
 
   const handleViewCalendar = () => {
-    toast({
-      title: "Kalenderansicht",
-      description: "Die Kalenderansicht wird in einer zukünftigen Version verfügbar sein.",
-    });
+    // Navigate to calendar view - will be implemented
   };
 
   const upstalsboomProperties = properties.filter(p => p.house === 'Upstalsboom');
   const hausAnneProperties = properties.filter(p => p.house === 'Haus Anne');
+
+  if (loading) {
+    return (
+      <div className="bg-[var(--gradient-subtle)] min-h-full">
+        <div className="container mx-auto p-6 space-y-8">
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+          <div className="space-y-8">
+            <div className="space-y-4">
+              <Skeleton className="h-6 w-48" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="h-32 w-full" />
+                ))}
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Skeleton className="h-6 w-48" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-32 w-full" />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[var(--gradient-subtle)] min-h-full">

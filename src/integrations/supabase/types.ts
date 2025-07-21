@@ -18,41 +18,62 @@ export type Database = {
         Row: {
           adults: number
           apartment_name: string
+          check_in: string | null
+          check_out: string | null
           children: number
+          contact_info: string | null
           created_at: string
           dog: boolean
           end_date: string
           ferry_time: string | null
+          guest_name: string | null
           id: string
+          is_paid: boolean | null
           paid: boolean
+          source: string | null
           start_date: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           adults?: number
           apartment_name: string
+          check_in?: string | null
+          check_out?: string | null
           children?: number
+          contact_info?: string | null
           created_at?: string
           dog?: boolean
           end_date: string
           ferry_time?: string | null
+          guest_name?: string | null
           id?: string
+          is_paid?: boolean | null
           paid?: boolean
+          source?: string | null
           start_date: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           adults?: number
           apartment_name?: string
+          check_in?: string | null
+          check_out?: string | null
           children?: number
+          contact_info?: string | null
           created_at?: string
           dog?: boolean
           end_date?: string
           ferry_time?: string | null
+          guest_name?: string | null
           id?: string
+          is_paid?: boolean | null
           paid?: boolean
+          source?: string | null
           start_date?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
