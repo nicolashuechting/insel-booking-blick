@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      bookings: {
+        Row: {
+          adults: number
+          apartment_name: string
+          children: number
+          created_at: string
+          dog: boolean
+          end_date: string
+          ferry_time: string | null
+          id: string
+          paid: boolean
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          adults?: number
+          apartment_name: string
+          children?: number
+          created_at?: string
+          dog?: boolean
+          end_date: string
+          ferry_time?: string | null
+          id?: string
+          paid?: boolean
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          adults?: number
+          apartment_name?: string
+          children?: number
+          created_at?: string
+          dog?: boolean
+          end_date?: string
+          ferry_time?: string | null
+          id?: string
+          paid?: boolean
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
