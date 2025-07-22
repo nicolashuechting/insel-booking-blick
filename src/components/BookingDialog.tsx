@@ -48,7 +48,7 @@ export function BookingDialog({
   });
 
   // No-dog apartments
-  const noDogApartments = ["Anne 2", "Anne 4", "Anne 5"];
+  const noDogApartments = ["Norderney", "Anne 2", "Anne 4", "Anne 5"];
   const isNoDogApartment = selectedProperty ? noDogApartments.includes(selectedProperty) : false;
 
   useEffect(() => {
