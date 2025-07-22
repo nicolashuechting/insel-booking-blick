@@ -1,4 +1,4 @@
-import { Calendar as CalendarIcon, Filter, Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, Filter, Plus, ChevronLeft, ChevronRight, Users, Baby, Dog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,15 +6,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { properties } from "@/data/mockData";
 import { useBookings } from "@/hooks/useBookings";
+import { BookingDialog } from "@/components/BookingDialog";
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState(null);
+  const [selectedDateRange, setSelectedDateRange] = useState(null);
   const { bookings, loading } = useBookings();
   
-  // Generate 12 days starting from current date
+  // Generate 30 days for better scrolling experience
   const generateDays = () => {
     const days = [];
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 30; i++) {
       const date = new Date(currentDate);
       date.setDate(currentDate.getDate() + i);
       days.push(date);
@@ -23,6 +28,9 @@ export default function Calendar() {
   };
 
   const days = generateDays();
+
+  // No-dog apartments
+  const noDogApartments = ["Anne 2", "Anne 4", "Anne 5"];
   
   const navigateWeek = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
@@ -30,14 +38,38 @@ export default function Calendar() {
     setCurrentDate(newDate);
   };
 
-  const getBookingsForPropertyAndDate = (propertyId: string, date: Date) => {
-    return bookings.filter(booking => {
-      const checkIn = new Date(booking.check_in);
-      const checkOut = new Date(booking.check_out);
-      return booking.property_id === propertyId && 
-             date >= checkIn && 
-             date < checkOut;
-    });
+  const getBookingsForProperty = (propertyName: string) => {
+    return bookings.filter(booking => booking.property_id === propertyName);
+  };
+
+  const calculateBookingPosition = (booking: any, propertyName: string) => {
+    const startDate = new Date(booking.start_date);
+    const endDate = new Date(booking.end_date);
+    const firstDay = days[0];
+    
+    // Calculate start position
+    const daysDiff = Math.floor((startDate.getTime() - firstDay.getTime()) / (1000 * 60 * 60 * 24));
+    const startCol = Math.max(0, daysDiff);
+    
+    // Calculate span
+    const bookingDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const endCol = Math.min(days.length - 1, startCol + bookingDays);
+    const span = endCol - startCol + 1;
+    
+    return { startCol, span, visible: startCol < days.length && endCol >= 0 };
+  };
+
+  const handleBookingClick = (booking: any) => {
+    setSelectedBooking(booking);
+    setIsBookingDialogOpen(true);
+  };
+
+  const handleNewBooking = (propertyName: string, dayIndex: number) => {
+    const selectedDate = days[dayIndex];
+    setSelectedProperty(propertyName);
+    setSelectedDateRange({ start: selectedDate, end: new Date(selectedDate.getTime() + 24 * 60 * 60 * 1000) });
+    setSelectedBooking(null);
+    setIsBookingDialogOpen(true);
   };
 
   const formatDate = (date: Date) => {
@@ -115,16 +147,16 @@ export default function Calendar() {
             <CardTitle>Buchungskalender</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto scrollbar-thin scrollbar-track-muted scrollbar-thumb-primary">
               <div className="min-w-[800px]">
                 {/* Header with dates */}
-                <div className="grid grid-cols-[200px_1fr] border-b border-border">
-                  <div className="p-4 bg-muted/50 font-semibold text-sm">
+                <div className="flex border-b border-border">
+                  <div className="w-48 p-4 bg-muted/50 font-semibold text-sm flex-shrink-0">
                     Wohnung
                   </div>
-                  <div className="grid grid-cols-12 gap-0">
+                  <div className="flex overflow-x-auto min-w-0">
                     {days.map((day, index) => (
-                      <div key={index} className="p-2 text-center bg-muted/30 border-l border-border text-xs font-medium">
+                      <div key={index} className="w-12 p-2 text-center bg-muted/30 border-l border-border text-xs font-medium flex-shrink-0">
                         {formatDate(day)}
                       </div>
                     ))}
@@ -132,50 +164,78 @@ export default function Calendar() {
                 </div>
 
                 {/* Property rows */}
-                {properties.map((property) => (
-                  <div key={property.id} className="grid grid-cols-[200px_1fr] border-b border-border hover:bg-muted/20 transition-colors">
-                    <div className="p-4 flex items-center">
-                      <div>
-                        <div className="font-medium text-sm">{property.name}</div>
-                        <div className="text-xs text-muted-foreground">{property.house}</div>
+                {properties.map((property) => {
+                  const propertyBookings = getBookingsForProperty(property.name);
+                  
+                  return (
+                    <div key={property.id} className="flex border-b border-border hover:bg-muted/20 transition-colors">
+                      <div className="w-48 p-4 flex items-center flex-shrink-0">
+                        <div>
+                          <div className="font-medium text-sm">{property.name}</div>
+                          <div className="text-xs text-muted-foreground">{property.house}</div>
+                          {noDogApartments.includes(property.name) && (
+                            <div className="text-xs text-orange-600 mt-1 flex items-center gap-1">
+                              <Dog className="h-3 w-3" />
+                              Keine Hunde
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-12 gap-0 relative min-h-[60px]">
-                      {days.map((day, dayIndex) => {
-                        const bookings = getBookingsForPropertyAndDate(property.id, day);
-                        const hasBooking = bookings.length > 0;
-                        
-                        return (
-                          <div 
-                            key={dayIndex} 
-                            className="border-l border-border p-1 flex items-center justify-center relative cursor-pointer hover:bg-primary/5 transition-colors"
-                          >
-                            {hasBooking && (
-                              <div className="w-full h-8 bg-primary/20 border border-primary/40 rounded-sm flex items-center justify-center group">
-                                <div className="text-xs text-primary font-medium truncate px-1">
-                                  {bookings[0].guest_name}
+                      
+                      <div className="flex-1 relative min-h-[60px] overflow-x-auto">
+                        <div className="flex relative">
+                          {/* Day slots */}
+                          {days.map((day, dayIndex) => (
+                            <div 
+                              key={dayIndex} 
+                              className="w-12 border-l border-border flex-shrink-0 h-16 cursor-pointer hover:bg-primary/5 transition-colors"
+                              onClick={() => handleNewBooking(property.name, dayIndex)}
+                            />
+                          ))}
+                          
+                          {/* Booking bars */}
+                          {propertyBookings.map((booking) => {
+                            const position = calculateBookingPosition(booking, property.name);
+                            
+                            if (!position.visible) return null;
+                            
+                            return (
+                              <div
+                                key={booking.id}
+                                className="absolute top-2 h-12 bg-primary/80 border border-primary rounded-md flex items-center justify-between px-2 cursor-pointer hover:bg-primary/90 transition-colors z-10"
+                                style={{
+                                  left: `${position.startCol * 48}px`, // 48px = w-12
+                                  width: `${position.span * 48}px`,
+                                }}
+                                onClick={() => handleBookingClick(booking)}
+                              >
+                                <div className="flex items-center gap-2 text-white text-xs font-medium truncate">
+                                  <span className="truncate">{booking.guest_name || 'Blockierung'}</span>
                                 </div>
-                                {/* Tooltip on hover */}
-                                <div className="absolute top-full left-0 mt-1 p-2 bg-popover border border-border rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10 text-xs min-w-[150px]">
-                                  <div className="font-medium">{bookings[0].guest_name}</div>
-                                  <div className="text-muted-foreground">
-                                    {new Date(bookings[0].check_in).toLocaleDateString('de-DE')} - {new Date(bookings[0].check_out).toLocaleDateString('de-DE')}
-                                  </div>
-                                  {bookings[0].source && (
-                                    <div className="text-muted-foreground">
-                                      Quelle: {bookings[0].source}
-                                    </div>
+                                
+                                <div className="flex items-center gap-1 text-white/80 text-xs flex-shrink-0">
+                                  {booking.property_id && (
+                                    <>
+                                      <div className="flex items-center gap-1">
+                                        <Users className="h-3 w-3" />
+                                        <span>2</span> {/* Will be replaced with actual data */}
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Baby className="h-3 w-3" />
+                                        <span>0</span> {/* Will be replaced with actual data */}
+                                      </div>
+                                      <Dog className="h-3 w-3" />
+                                    </>
                                   )}
                                 </div>
                               </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </CardContent>
@@ -201,6 +261,19 @@ export default function Calendar() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Booking Dialog */}
+        <BookingDialog
+          open={isBookingDialogOpen}
+          onOpenChange={setIsBookingDialogOpen}
+          properties={properties}
+          onSubmit={(data) => console.log('Add booking:', data)}
+          onUpdate={(id, data) => console.log('Update booking:', id, data)}
+          onDelete={(id) => console.log('Delete booking:', id)}
+          selectedProperty={selectedProperty}
+          selectedDateRange={selectedDateRange}
+          booking={selectedBooking}
+        />
       </div>
     </div>
   );

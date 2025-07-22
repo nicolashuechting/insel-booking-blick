@@ -1,30 +1,40 @@
-import { useState } from 'react';
-import { Property, BookingFormData } from '@/types';
+import { useState, useEffect } from 'react';
+import { Property, BookingFormData, Booking } from '@/types';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Users, Phone, Clock, CreditCard, Tag } from 'lucide-react';
+import { Calendar, Users, Phone, Clock, CreditCard, Tag, Baby, Dog, Trash2 } from 'lucide-react';
 
 interface BookingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   properties: Property[];
   onSubmit: (data: BookingFormData) => void;
+  onUpdate?: (id: string, data: Partial<BookingFormData>) => void;
+  onDelete?: (id: string) => void;
   selectedPropertyId?: string;
+  selectedProperty?: string;
+  selectedDateRange?: { start: Date; end: Date } | null;
+  booking?: Booking | null;
 }
 
 export function BookingDialog({ 
   open, 
   onOpenChange, 
   properties, 
-  onSubmit, 
-  selectedPropertyId 
+  onSubmit,
+  onUpdate,
+  onDelete,
+  selectedPropertyId,
+  selectedProperty,
+  selectedDateRange,
+  booking
 }: BookingDialogProps) {
-  const [formData, setFormData] = useState<BookingFormData>({
-    property_id: selectedPropertyId || '',
+  const [formData, setFormData] = useState<BookingFormData & { adults: number; children: number; dog: boolean }>({
+    property_id: selectedPropertyId || selectedProperty || '',
     guest_name: '',
     contact_info: '',
     check_in: '',
@@ -32,11 +42,51 @@ export function BookingDialog({
     ferry_time: '',
     is_paid: false,
     source: 'manual',
+    adults: 1,
+    children: 0,
+    dog: false,
   });
+
+  // No-dog apartments
+  const noDogApartments = ["Anne 2", "Anne 4", "Anne 5"];
+  const isNoDogApartment = selectedProperty ? noDogApartments.includes(selectedProperty) : false;
+
+  useEffect(() => {
+    if (booking) {
+      // Edit mode - populate form with booking data
+      setFormData({
+        property_id: booking.property_id,
+        guest_name: booking.guest_name || '',
+        contact_info: booking.contact_info || '',
+        check_in: booking.check_in,
+        check_out: booking.check_out,
+        ferry_time: booking.ferry_time || '',
+        is_paid: booking.is_paid,
+        source: booking.source === 'ical_1' || booking.source === 'ical_2' ? 'manual' : booking.source,
+        adults: 1, // Default values - will be replaced with actual data
+        children: 0,
+        dog: false,
+      });
+    } else if (selectedDateRange) {
+      // New booking mode - set dates from selection
+      const formatDate = (date: Date) => date.toISOString().split('T')[0];
+      setFormData(prev => ({
+        ...prev,
+        property_id: selectedProperty || '',
+        check_in: formatDate(selectedDateRange.start),
+        check_out: formatDate(selectedDateRange.end),
+        dog: false, // Reset dog for no-dog apartments
+      }));
+    }
+  }, [booking, selectedDateRange, selectedProperty]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    if (booking && onUpdate) {
+      onUpdate(booking.id, formData);
+    } else {
+      onSubmit(formData);
+    }
     setFormData({
       property_id: selectedPropertyId || '',
       guest_name: '',
@@ -46,8 +96,18 @@ export function BookingDialog({
       ferry_time: '',
       is_paid: false,
       source: 'manual',
+      adults: 1,
+      children: 0,
+      dog: false,
     });
     onOpenChange(false);
+  };
+
+  const handleDelete = () => {
+    if (booking && onDelete) {
+      onDelete(booking.id);
+      onOpenChange(false);
+    }
   };
 
   const groupedProperties = properties.reduce((acc, property) => {
@@ -182,6 +242,56 @@ export function BookingDialog({
 
             {formData.source === 'manual' && (
               <>
+                <div className="grid grid-cols-3 gap-4 col-span-2">
+                  <div>
+                    <Label htmlFor="adults">Erwachsene</Label>
+                    <div className="relative">
+                      <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="adults"
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={formData.adults}
+                        onChange={(e) => setFormData({ ...formData, adults: parseInt(e.target.value) || 1 })}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="children">Kinder</Label>
+                    <div className="relative">
+                      <Baby className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="children"
+                        type="number"
+                        min="0"
+                        max="10"
+                        value={formData.children}
+                        onChange={(e) => setFormData({ ...formData, children: parseInt(e.target.value) || 0 })}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="dog">Hund</Label>
+                    <div className="flex items-center space-x-2 h-10">
+                      <Checkbox 
+                        id="dog"
+                        checked={formData.dog}
+                        disabled={isNoDogApartment}
+                        onCheckedChange={(checked) => setFormData({ ...formData, dog: !!checked })}
+                      />
+                      <Dog className={`h-4 w-4 ${isNoDogApartment ? 'text-muted-foreground' : 'text-primary'}`} />
+                    </div>
+                    {isNoDogApartment && (
+                      <p className="text-xs text-orange-600 mt-1">Keine Hunde erlaubt</p>
+                    )}
+                  </div>
+                </div>
+
                 <div className="col-span-2">
                   <Label htmlFor="ferry_time">Fähruhrzeit</Label>
                   <div className="relative">
@@ -213,20 +323,36 @@ export function BookingDialog({
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => onOpenChange(false)}
-            >
-              Abbrechen
-            </Button>
-            <Button 
-              type="submit"
-              className="bg-[var(--gradient-ocean)] hover:opacity-90"
-            >
-              {formData.source === 'blocked' ? 'Blockierung hinzufügen' : 'Buchung hinzufügen'}
-            </Button>
+          <div className="flex justify-between pt-4 border-t">
+            <div>
+              {booking && onDelete && (
+                <Button 
+                  type="button" 
+                  variant="destructive"
+                  onClick={handleDelete}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Löschen
+                </Button>
+              )}
+            </div>
+            
+            <div className="flex gap-3">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => onOpenChange(false)}
+              >
+                Abbrechen
+              </Button>
+              <Button 
+                type="submit"
+                className="bg-[var(--gradient-ocean)] hover:opacity-90"
+              >
+                {booking ? 'Aktualisieren' : (formData.source === 'blocked' ? 'Blockierung hinzufügen' : 'Buchung hinzufügen')}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>
