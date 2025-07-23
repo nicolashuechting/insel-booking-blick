@@ -16,28 +16,27 @@ export function CalendarGrid({ bookings, onBookingClick, onDateRangeSelect }: Ca
   const [selectionEnd, setSelectionEnd] = useState<{ property: string; dayIndex: number } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Generate more days for infinite scrolling
+  // Generate days from today until end of 2040
   const generateDays = useCallback(() => {
     const days = [];
-    for (let i = -30; i < 90; i++) { // Show 30 days before and 90 days after
-      const date = new Date(currentDate);
-      date.setDate(currentDate.getDate() + i);
-      days.push(date);
+    const today = new Date();
+    const endDate = new Date(2040, 11, 31); // End of 2040
+    
+    const currentDay = new Date(today);
+    while (currentDay <= endDate) {
+      days.push(new Date(currentDay));
+      currentDay.setDate(currentDay.getDate() + 1);
     }
     return days;
-  }, [currentDate]);
+  }, []);
 
   const days = generateDays();
   const noDogApartments = ["Norderney", "Anne 2", "Anne 4", "Anne 5"];
 
-  // Scroll to "today" on mount
+  // Scroll to "today" on mount - start at beginning since we start from today
   useEffect(() => {
     if (scrollContainerRef.current) {
-      const todayIndex = 30; // Today is at index 30 in our array
-      const dayWidth = 48; // w-12 = 48px
-      const visibleDays = 12;
-      const scrollPosition = todayIndex * dayWidth - (visibleDays * dayWidth) / 2;
-      scrollContainerRef.current.scrollLeft = Math.max(0, scrollPosition);
+      scrollContainerRef.current.scrollLeft = 0;
     }
   }, []);
 
@@ -120,14 +119,30 @@ export function CalendarGrid({ bookings, onBookingClick, onDateRangeSelect }: Ca
   };
 
   return (
-    <div className="bg-card/80 backdrop-blur-sm border-primary/20 overflow-hidden rounded-lg">
-      <div className="overflow-x-auto scrollbar-thin scrollbar-track-muted scrollbar-thumb-primary" ref={scrollContainerRef}>
+    <div className="bg-card/80 backdrop-blur-sm border-primary/20 overflow-hidden rounded-lg flex">
+      {/* Fixed left column with property names */}
+      <div className="w-48 flex-shrink-0 bg-muted/50">
+        {/* Header for property names */}
+        <div className="p-3 border-b border-border font-semibold text-sm">
+          Wohnung
+        </div>
+        
+        {/* Property names */}
+        {properties.map((property) => (
+          <div key={property.id} className="p-3 border-b border-border hover:bg-muted/20 transition-colors h-12 flex items-center">
+            <div>
+              <div className="font-medium text-sm">{property.name}</div>
+              <div className="text-xs text-muted-foreground">{property.house}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Scrollable calendar content */}
+      <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-track-muted scrollbar-thumb-primary" ref={scrollContainerRef} style={{ maxWidth: `${12 * 48}px` }}>
         <div style={{ minWidth: `${days.length * 48}px` }}>
           {/* Header with dates */}
-          <div className="flex border-b border-border">
-            <div className="w-48 p-4 bg-muted/50 font-semibold text-sm flex-shrink-0">
-              Wohnung
-            </div>
+          <div className="border-b border-border">
             <div className="flex">
               {days.map((day, index) => (
                 <div key={index} className="w-12 p-2 text-center bg-muted/30 border-l border-border text-xs font-medium flex-shrink-0">
@@ -142,68 +157,53 @@ export function CalendarGrid({ bookings, onBookingClick, onDateRangeSelect }: Ca
             const propertyBookings = getBookingsForProperty(property.name);
             
             return (
-              <div key={property.id} className="flex border-b border-border hover:bg-muted/20 transition-colors">
-                <div className="w-48 p-4 flex items-center flex-shrink-0">
-                  <div>
-                    <div className="font-medium text-sm">{property.name}</div>
-                    <div className="text-xs text-muted-foreground">{property.house}</div>
-                    {noDogApartments.includes(property.name) && (
-                      <div className="text-xs text-orange-600 mt-1 flex items-center gap-1">
-                        <Dog className="h-3 w-3" />
-                        Keine Hunde
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex-1 relative min-h-[60px]">
-                  <div className="flex relative">
-                    {/* Day slots */}
-                    {days.map((day, dayIndex) => (
-                      <div 
-                        key={dayIndex} 
-                        className="w-12 border-l border-border flex-shrink-0 h-16 cursor-crosshair hover:bg-primary/5 transition-colors select-none"
-                        style={getSelectionStyle(property.name, dayIndex)}
-                        onMouseDown={(e) => handleMouseDown(property.name, dayIndex, e)}
-                        onMouseEnter={() => handleMouseEnter(property.name, dayIndex)}
-                      />
-                    ))}
+              <div key={property.id} className="border-b border-border hover:bg-muted/20 transition-colors h-12 relative">
+                <div className="flex relative h-full">
+                  {/* Day slots */}
+                  {days.map((day, dayIndex) => (
+                    <div 
+                      key={dayIndex} 
+                      className="w-12 border-l border-border flex-shrink-0 h-full cursor-crosshair hover:bg-primary/5 transition-colors select-none"
+                      style={getSelectionStyle(property.name, dayIndex)}
+                      onMouseDown={(e) => handleMouseDown(property.name, dayIndex, e)}
+                      onMouseEnter={() => handleMouseEnter(property.name, dayIndex)}
+                    />
+                  ))}
+                  
+                  {/* Booking bars */}
+                  {propertyBookings.map((booking) => {
+                    const position = calculateBookingPosition(booking);
                     
-                    {/* Booking bars */}
-                    {propertyBookings.map((booking) => {
-                      const position = calculateBookingPosition(booking);
-                      
-                      if (!position.visible) return null;
-                      
-                      return (
-                        <div
-                          key={booking.id}
-                          className="absolute top-2 h-12 bg-primary/80 border border-primary rounded-md flex items-center justify-between px-2 cursor-pointer hover:bg-primary/90 transition-colors z-10"
-                          style={{
-                            left: `${position.startCol * 48}px`,
-                            width: `${position.span * 48}px`,
-                          }}
-                          onClick={() => onBookingClick(booking)}
-                        >
-                          <div className="flex items-center gap-2 text-white text-xs font-medium truncate">
-                            <span className="truncate">{booking.guest_name || 'Blockierung'}</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-1 text-white/80 text-xs flex-shrink-0">
-                            <div className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              <span>2</span> {/* Default for now, will be enhanced with actual data */}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Baby className="h-3 w-3" />
-                              <span>0</span> {/* Default for now, will be enhanced with actual data */}
-                            </div>
-                            <Dog className="h-3 w-3" /> {/* Show/hide based on actual data later */}
-                          </div>
+                    if (!position.visible) return null;
+                    
+                    return (
+                      <div
+                        key={booking.id}
+                        className="absolute top-1 h-10 bg-primary/80 border border-primary rounded-md flex items-center justify-between px-2 cursor-pointer hover:bg-primary/90 transition-colors z-10"
+                        style={{
+                          left: `${position.startCol * 48}px`,
+                          width: `${position.span * 48}px`,
+                        }}
+                        onClick={() => onBookingClick(booking)}
+                      >
+                        <div className="flex items-center gap-2 text-white text-xs font-medium truncate">
+                          <span className="truncate">{booking.guest_name || 'Blockierung'}</span>
                         </div>
-                      );
-                    })}
-                  </div>
+                        
+                        <div className="flex items-center gap-1 text-white/80 text-xs flex-shrink-0">
+                          <div className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            <span>2</span> {/* Default for now, will be enhanced with actual data */}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Baby className="h-3 w-3" />
+                            <span>0</span> {/* Default for now, will be enhanced with actual data */}
+                          </div>
+                          <Dog className="h-3 w-3" /> {/* Show/hide based on actual data later */}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
