@@ -7,12 +7,19 @@ export interface Property {
 export interface Booking {
   id: string;
   property_id: string;
+  apartment_name?: string;
   guest_name: string;
   contact_info?: string;
   check_in: string;
   check_out: string;
+  start_date?: string;
+  end_date?: string;
   ferry_time?: string;
   is_paid: boolean;
+  paid?: boolean;
+  adults: number;
+  children: number;
+  dog: boolean;
   source: 'manual' | 'ical_1' | 'ical_2' | 'blocked';
   created_at: string;
   updated_at: string;

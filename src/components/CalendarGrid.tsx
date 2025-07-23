@@ -16,11 +16,12 @@ export function CalendarGrid({ bookings, onBookingClick, onDateRangeSelect }: Ca
   const [selectionEnd, setSelectionEnd] = useState<{ property: string; dayIndex: number } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Generate days from today until end of 2040
+  // Generate days from today for the next 2 years (performance optimization)
   const generateDays = useCallback(() => {
     const days = [];
     const today = new Date();
-    const endDate = new Date(2040, 11, 31); // End of 2040
+    const endDate = new Date();
+    endDate.setFullYear(today.getFullYear() + 2); // Only 2 years ahead for better performance
     
     const currentDay = new Date(today);
     while (currentDay <= endDate) {
@@ -40,13 +41,13 @@ export function CalendarGrid({ bookings, onBookingClick, onDateRangeSelect }: Ca
     }
   }, []);
 
-  const getBookingsForProperty = (propertyName: string) => {
-    return bookings.filter(booking => booking.property_id === propertyName);
-  };
+  const getBookingsForProperty = useCallback((propertyName: string) => {
+    return bookings.filter(booking => booking.apartment_name === propertyName || booking.property_id === propertyName);
+  }, [bookings]);
 
-  const calculateBookingPosition = (booking: Booking) => {
-    const startDate = new Date(booking.check_in);
-    const endDate = new Date(booking.check_out);
+  const calculateBookingPosition = useCallback((booking: Booking) => {
+    const startDate = new Date(booking.start_date || booking.check_in);
+    const endDate = new Date(booking.end_date || booking.check_out);
     const firstDay = days[0];
     
     const daysDiff = Math.floor((startDate.getTime() - firstDay.getTime()) / (1000 * 60 * 60 * 24));
@@ -57,22 +58,22 @@ export function CalendarGrid({ bookings, onBookingClick, onDateRangeSelect }: Ca
     const span = endCol - startCol + 1;
     
     return { startCol, span, visible: startCol < days.length && endCol >= 0 };
-  };
+  }, [days]);
 
-  const handleMouseDown = (propertyName: string, dayIndex: number, e: React.MouseEvent) => {
+  const handleMouseDown = useCallback((propertyName: string, dayIndex: number, e: React.MouseEvent) => {
     e.preventDefault();
     setIsSelecting(true);
     setSelectionStart({ property: propertyName, dayIndex });
     setSelectionEnd({ property: propertyName, dayIndex });
-  };
+  }, []);
 
-  const handleMouseEnter = (propertyName: string, dayIndex: number) => {
+  const handleMouseEnter = useCallback((propertyName: string, dayIndex: number) => {
     if (isSelecting && selectionStart && selectionStart.property === propertyName) {
       setSelectionEnd({ property: propertyName, dayIndex });
     }
-  };
+  }, [isSelecting, selectionStart]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     if (isSelecting && selectionStart && selectionEnd) {
       const startIndex = Math.min(selectionStart.dayIndex, selectionEnd.dayIndex);
       const endIndex = Math.max(selectionStart.dayIndex, selectionEnd.dayIndex);
@@ -87,15 +88,15 @@ export function CalendarGrid({ bookings, onBookingClick, onDateRangeSelect }: Ca
     setIsSelecting(false);
     setSelectionStart(null);
     setSelectionEnd(null);
-  };
+  }, [isSelecting, selectionStart, selectionEnd, days, onDateRangeSelect]);
 
   useEffect(() => {
     const handleGlobalMouseUp = () => handleMouseUp();
     document.addEventListener('mouseup', handleGlobalMouseUp);
     return () => document.removeEventListener('mouseup', handleGlobalMouseUp);
-  }, [isSelecting, selectionStart, selectionEnd]);
+  }, [handleMouseUp]);
 
-  const getSelectionStyle = (propertyName: string, dayIndex: number) => {
+  const getSelectionStyle = useCallback((propertyName: string, dayIndex: number) => {
     if (!isSelecting || !selectionStart || !selectionEnd || selectionStart.property !== propertyName) {
       return {};
     }
@@ -108,7 +109,7 @@ export function CalendarGrid({ bookings, onBookingClick, onDateRangeSelect }: Ca
     }
     
     return {};
-  };
+  }, [isSelecting, selectionStart, selectionEnd]);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('de-DE', { 
@@ -193,13 +194,13 @@ export function CalendarGrid({ bookings, onBookingClick, onDateRangeSelect }: Ca
                         <div className="flex items-center gap-1 text-white/80 text-xs flex-shrink-0">
                           <div className="flex items-center gap-1">
                             <Users className="h-3 w-3" />
-                            <span>2</span> {/* Default for now, will be enhanced with actual data */}
+                            <span>{booking.adults || 1}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Baby className="h-3 w-3" />
-                            <span>0</span> {/* Default for now, will be enhanced with actual data */}
+                            <span>{booking.children || 0}</span>
                           </div>
-                          <Dog className="h-3 w-3" /> {/* Show/hide based on actual data later */}
+                          {booking.dog && <Dog className="h-3 w-3" />}
                         </div>
                       </div>
                     );

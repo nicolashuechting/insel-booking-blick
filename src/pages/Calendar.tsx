@@ -14,7 +14,7 @@ export default function Calendar() {
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
   const [selectedDateRange, setSelectedDateRange] = useState<{ start: Date; end: Date } | null>(null);
-  const { bookings, loading } = useBookings();
+  const { bookings, loading, addBooking, updateBooking, deleteBooking } = useBookings();
 
   const handleBookingClick = (booking: Booking) => {
     setSelectedBooking(booking);
@@ -117,9 +117,18 @@ export default function Calendar() {
           open={isBookingDialogOpen}
           onOpenChange={setIsBookingDialogOpen}
           properties={properties}
-          onSubmit={(data) => console.log('Add booking:', data)}
-          onUpdate={(id, data) => console.log('Update booking:', id, data)}
-          onDelete={(id) => console.log('Delete booking:', id)}
+          onSubmit={async (data) => {
+            await addBooking(data);
+            setIsBookingDialogOpen(false);
+          }}
+          onUpdate={async (id, data) => {
+            await updateBooking(id, data);
+            setIsBookingDialogOpen(false);
+          }}
+          onDelete={async (id) => {
+            await deleteBooking(id);
+            setIsBookingDialogOpen(false);
+          }}
           selectedProperty={selectedProperty}
           selectedDateRange={selectedDateRange}
           booking={selectedBooking}
