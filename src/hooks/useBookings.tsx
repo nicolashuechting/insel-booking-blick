@@ -30,16 +30,16 @@ export const useBookings = () => {
       // Transform Supabase data to match our Booking interface
       const transformedBookings: Booking[] = data.map(booking => ({
         id: booking.id,
-        property_id: booking.apartment_name, // Map apartment_name to property_id for compatibility
+        property_id: booking.apartment_name, // Use apartment_name as property_id
         apartment_name: booking.apartment_name,
         guest_name: booking.guest_name || '',
         contact_info: booking.contact_info || '',
-        check_in: booking.check_in || booking.start_date,
-        check_out: booking.check_out || booking.end_date,
+        check_in: booking.start_date, // Use start_date as primary
+        check_out: booking.end_date, // Use end_date as primary
         start_date: booking.start_date,
         end_date: booking.end_date,
         ferry_time: booking.ferry_time || '',
-        is_paid: booking.is_paid || booking.paid,
+        is_paid: booking.paid || booking.is_paid, // Use paid as primary
         paid: booking.paid,
         adults: booking.adults || 1,
         children: booking.children || 0,
@@ -48,6 +48,8 @@ export const useBookings = () => {
         created_at: booking.created_at,
         updated_at: booking.updated_at,
       }));
+
+      console.log('Loaded bookings from Supabase:', transformedBookings);
 
       setBookings(transformedBookings);
     } catch (error: any) {
@@ -76,13 +78,10 @@ export const useBookings = () => {
         contact_info: data.contact_info,
         start_date: data.check_in,
         end_date: data.check_out,
-        check_in: data.check_in,
-        check_out: data.check_out,
         ferry_time: data.ferry_time || null,
         paid: data.is_paid,
-        is_paid: data.is_paid,
         source: data.source,
-        adults: 1, // Default values
+        adults: 1, // Default values, will be enhanced later
         children: 0,
         dog: false,
       };
@@ -102,12 +101,12 @@ export const useBookings = () => {
         apartment_name: newBooking.apartment_name,
         guest_name: newBooking.guest_name || '',
         contact_info: newBooking.contact_info || '',
-        check_in: newBooking.check_in || newBooking.start_date,
-        check_out: newBooking.check_out || newBooking.end_date,
+        check_in: newBooking.start_date,
+        check_out: newBooking.end_date,
         start_date: newBooking.start_date,
         end_date: newBooking.end_date,
         ferry_time: newBooking.ferry_time || '',
-        is_paid: newBooking.is_paid || newBooking.paid,
+        is_paid: newBooking.paid,
         paid: newBooking.paid,
         adults: newBooking.adults || 1,
         children: newBooking.children || 0,
@@ -149,11 +148,8 @@ export const useBookings = () => {
         contact_info: data.contact_info,
         start_date: data.check_in,
         end_date: data.check_out,
-        check_in: data.check_in,
-        check_out: data.check_out,
         ferry_time: data.ferry_time || null,
         paid: data.is_paid,
-        is_paid: data.is_paid,
         source: data.source,
       };
 

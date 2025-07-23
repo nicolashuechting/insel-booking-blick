@@ -42,13 +42,21 @@ export function CalendarGrid({ bookings, onBookingClick, onDateRangeSelect }: Ca
   }, []);
 
   const getBookingsForProperty = useCallback((propertyName: string) => {
-    return bookings.filter(booking => booking.apartment_name === propertyName || booking.property_id === propertyName);
+    // Map property name to property ID for filtering
+    const property = properties.find(p => p.name === propertyName);
+    return bookings.filter(booking => 
+      booking.apartment_name === property?.id || 
+      booking.property_id === property?.id ||
+      booking.property_id === propertyName
+    );
   }, [bookings]);
 
   const calculateBookingPosition = useCallback((booking: Booking) => {
     const startDate = new Date(booking.start_date || booking.check_in);
     const endDate = new Date(booking.end_date || booking.check_out);
     const firstDay = days[0];
+    
+    console.log('Calculating position for booking:', booking.guest_name, startDate, endDate);
     
     const daysDiff = Math.floor((startDate.getTime() - firstDay.getTime()) / (1000 * 60 * 60 * 24));
     const startCol = Math.max(0, daysDiff);

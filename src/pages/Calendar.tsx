@@ -22,7 +22,9 @@ export default function Calendar() {
   };
 
   const handleDateRangeSelect = (propertyName: string, startDate: Date, endDate: Date) => {
-    setSelectedProperty(propertyName);
+    // Find the property ID from the name
+    const property = properties.find(p => p.name === propertyName);
+    setSelectedProperty(property?.id || propertyName);
     setSelectedDateRange({ start: startDate, end: endDate });
     setSelectedBooking(null);
     setIsBookingDialogOpen(true);
