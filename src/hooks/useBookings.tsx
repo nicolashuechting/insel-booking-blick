@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { db, auth } from '@/lib/firebase';
+import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Booking, BookingFormData } from '@/types';
@@ -10,7 +11,7 @@ export const useBookings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Load bookings from Supabase
+  // Load bookings from Firebase
   const loadBookings = async () => {
     if (!user) {
       setBookings([]);
@@ -20,37 +21,34 @@ export const useBookings = () => {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const q = query(collection(db, 'bookings'), where('userId', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+      
+      const transformedBookings: Booking[] = querySnapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          property_id: data.apartment || data.property_id || '',
+          apartment_name: data.apartment || data.apartment_name || '',
+          guest_name: data.guestName || '',
+          contact_info: data.email || '',
+          check_in: data.checkIn || '',
+          check_out: data.checkOut || '',
+          start_date: data.checkIn || '',
+          end_date: data.checkOut || '',
+          ferry_time: data.ferry_time || '',
+          is_paid: data.paid || false,
+          paid: data.paid || false,
+          adults: data.persons || 1,
+          children: data.children || 0,
+          dog: data.hasDog || false,
+          source: data.source || 'manual',
+          created_at: data.createdAt?.toDate?.() || new Date(),
+          updated_at: data.updatedAt?.toDate?.() || new Date(),
+        };
+      });
 
-      if (error) throw error;
-
-      // Transform Supabase data to match our Booking interface
-      const transformedBookings: Booking[] = data.map(booking => ({
-        id: booking.id,
-        property_id: booking.apartment_name, // Use apartment_name as property_id
-        apartment_name: booking.apartment_name,
-        guest_name: booking.guest_name || '',
-        contact_info: booking.contact_info || '',
-        check_in: booking.start_date, // Use start_date as primary
-        check_out: booking.end_date, // Use end_date as primary
-        start_date: booking.start_date,
-        end_date: booking.end_date,
-        ferry_time: booking.ferry_time || '',
-        is_paid: booking.paid || booking.is_paid, // Use paid as primary
-        paid: booking.paid,
-        adults: booking.adults || 1,
-        children: booking.children || 0,
-        dog: booking.dog || false,
-        source: (booking.source as 'manual' | 'blocked' | 'ical_1' | 'ical_2') || 'manual',
-        created_at: booking.created_at,
-        updated_at: booking.updated_at,
-      }));
-
-      console.log('Loaded bookings from Supabase:', transformedBookings);
-
+      console.log('Loaded bookings from Firebase:', transformedBookings);
       setBookings(transformedBookings);
     } catch (error: any) {
       console.error('Error loading bookings:', error);
@@ -72,48 +70,43 @@ export const useBookings = () => {
       setLoading(true);
       
       const bookingData = {
-        user_id: user.id,
-        apartment_name: data.property_id,
-        guest_name: data.guest_name,
-        contact_info: data.contact_info,
-        start_date: data.check_in,
-        end_date: data.check_out,
+        userId: user.uid,
+        apartment: data.property_id,
+        guestName: data.guest_name,
+        email: data.contact_info,
+        checkIn: data.check_in,
+        checkOut: data.check_out,
         ferry_time: data.ferry_time || null,
         paid: data.is_paid,
         source: data.source,
-        adults: 1, // Default values, will be enhanced later
+        persons: 1,
         children: 0,
-        dog: false,
+        hasDog: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
-      const { data: newBooking, error } = await supabase
-        .from('bookings')
-        .insert(bookingData)
-        .select()
-        .single();
+      const docRef = await addDoc(collection(db, 'bookings'), bookingData);
 
-      if (error) throw error;
-
-      // Transform and add to local state
       const transformedBooking: Booking = {
-        id: newBooking.id,
-        property_id: newBooking.apartment_name,
-        apartment_name: newBooking.apartment_name,
-        guest_name: newBooking.guest_name || '',
-        contact_info: newBooking.contact_info || '',
-        check_in: newBooking.start_date,
-        check_out: newBooking.end_date,
-        start_date: newBooking.start_date,
-        end_date: newBooking.end_date,
-        ferry_time: newBooking.ferry_time || '',
-        is_paid: newBooking.paid,
-        paid: newBooking.paid,
-        adults: newBooking.adults || 1,
-        children: newBooking.children || 0,
-        dog: newBooking.dog || false,
-        source: (newBooking.source as 'manual' | 'blocked' | 'ical_1' | 'ical_2') || 'manual',
-        created_at: newBooking.created_at,
-        updated_at: newBooking.updated_at,
+        id: docRef.id,
+        property_id: bookingData.apartment,
+        apartment_name: bookingData.apartment,
+        guest_name: bookingData.guestName || '',
+        contact_info: bookingData.email || '',
+        check_in: bookingData.checkIn,
+        check_out: bookingData.checkOut,
+        start_date: bookingData.checkIn,
+        end_date: bookingData.checkOut,
+        ferry_time: bookingData.ferry_time || '',
+        is_paid: bookingData.paid,
+        paid: bookingData.paid,
+        adults: bookingData.persons || 1,
+        children: bookingData.children || 0,
+        dog: bookingData.hasDog || false,
+        source: bookingData.source,
+        created_at: bookingData.createdAt,
+        updated_at: bookingData.updatedAt,
       };
 
       setBookings(prev => [transformedBooking, ...prev]);
@@ -143,27 +136,27 @@ export const useBookings = () => {
       setLoading(true);
       
       const updateData = {
-        apartment_name: data.property_id,
-        guest_name: data.guest_name,
-        contact_info: data.contact_info,
-        start_date: data.check_in,
-        end_date: data.check_out,
+        apartment: data.property_id,
+        guestName: data.guest_name,
+        email: data.contact_info,
+        checkIn: data.check_in,
+        checkOut: data.check_out,
         ferry_time: data.ferry_time || null,
         paid: data.is_paid,
         source: data.source,
+        updatedAt: new Date(),
       };
 
-      const { error } = await supabase
-        .from('bookings')
-        .update(updateData)
-        .eq('id', id);
+      await updateDoc(doc(db, 'bookings', id), updateData);
 
-      if (error) throw error;
-
-      // Update local state
       setBookings(prev => prev.map(booking => 
         booking.id === id 
-          ? { ...booking, ...data, check_in: data.check_in!, check_out: data.check_out! }
+          ? { 
+              ...booking, 
+              ...data, 
+              check_in: data.check_in || booking.check_in, 
+              check_out: data.check_out || booking.check_out 
+            }
           : booking
       ));
 
@@ -190,12 +183,7 @@ export const useBookings = () => {
     try {
       setLoading(true);
       
-      const { error } = await supabase
-        .from('bookings')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await deleteDoc(doc(db, 'bookings', id));
 
       setBookings(prev => prev.filter(booking => booking.id !== id));
 
